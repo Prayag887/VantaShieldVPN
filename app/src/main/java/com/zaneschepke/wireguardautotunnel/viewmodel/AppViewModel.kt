@@ -12,6 +12,7 @@ import com.zaneschepke.logcatter.model.LogMessage
 import com.zaneschepke.networkmonitor.AndroidNetworkMonitor
 import com.zaneschepke.networkmonitor.ConnectivityState
 import com.zaneschepke.networkmonitor.NetworkMonitor
+import com.zaneschepke.wireguardautotunnel.AssetConfigLoader
 import com.zaneschepke.wireguardautotunnel.R
 import com.zaneschepke.wireguardautotunnel.WireGuardAutoTunnel
 import com.zaneschepke.wireguardautotunnel.core.service.ServiceManager
@@ -66,6 +67,7 @@ constructor(
     private val fileUtils: FileUtils,
     private val shortcutManager: ShortcutManager,
     networkMonitor: NetworkMonitor,
+    private val assetConfigLoader: AssetConfigLoader,
 ) : ViewModel() {
 
     private var logsJob: Job? = null
@@ -128,6 +130,9 @@ constructor(
                 handleKillSwitchChange(state.appSettings)
                 initServicesFromSavedState(state)
                 if (state.appState.isLocalLogsEnabled) logsJob = startCollectingLogs()
+                if(state.tunnels.isEmpty()) {
+                    handleLoadAssetConfigs(state.tunnels)
+                }
             }
         }
     }
@@ -225,9 +230,41 @@ constructor(
                     is AppEvent.SetDetectionMethod ->
                         handleSetDetectionMethod(event.detectionMethod, state.appSettings)
                     is AppEvent.SaveAllConfigs -> saveAllTunnels(event.tunnels)
+                    AppEvent.LoadAssetConfigs -> handleLoadAssetConfigs(state.tunnels)
                 }
             }
         }
+
+
+
+    private suspend fun handleLoadAssetConfigs(existingTunnels: List<TunnelConf>) {
+        assetConfigLoader.loadConfigsFromAssets()
+            .onSuccess { assetConfigs ->
+                val existingNames = existingTunnels.map { it.tunName }.toMutableList()
+                val uniqueConfigs = assetConfigs.map { config ->
+                    val uniqueName = config.generateUniqueName(existingNames)
+                    existingNames.add(uniqueName)
+                    config.copy(tunName = uniqueName)
+                }
+
+                if (uniqueConfigs.isNotEmpty()) {
+                    appDataRepository.tunnels.saveAll(uniqueConfigs)
+//                    handleShowMessage(
+//                        StringValue.StringResource(
+//                            R.string.asset_configs_loaded,
+//                            uniqueConfigs.size
+//                        )
+//                    )
+                } else {
+//                    handleShowMessage(StringValue.StringResource(R.string.no_asset_configs_found))
+                }
+            }
+            .onFailure { exception ->
+                Timber.e(exception, "Failed to load asset configs")
+//                handleShowMessage(StringValue.StringResource(R.string.error_loading_asset_configs))
+            }
+    }
+
 
     private suspend fun saveAllTunnels(tunnels: List<TunnelConf>) {
         appDataRepository.tunnels.saveAll(tunnels)

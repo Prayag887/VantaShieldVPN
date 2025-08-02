@@ -17,6 +17,8 @@ sealed class AppEvent {
 
     data object ToggleRestartAtBoot : AppEvent()
 
+    object LoadAssetConfigs : AppEvent()
+
     data object ToggleVpnKillSwitch : AppEvent()
 
     data object ToggleLanOnKillSwitch : AppEvent()

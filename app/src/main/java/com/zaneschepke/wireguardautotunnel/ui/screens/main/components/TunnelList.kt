@@ -55,9 +55,9 @@ fun TunnelList(
         reverseLayout = false,
         flingBehavior = ScrollableDefaults.flingBehavior(),
     ) {
-        if (appUiState.tunnels.isEmpty()) {
-            item { VpnCountrySelector(tunnelProvider) }
-        }
+//        if (appUiState.tunnels.isEmpty()) {
+//            item { VpnCountrySelector(tunnelProvider) }
+//        }
         items(appUiState.tunnels, key = { it.id }) { tunnel ->
             val tunnelState =
                 remember(appUiState.activeTunnels) {
